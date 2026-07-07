@@ -8,12 +8,12 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 
 from agent import CodingAgent
 from github_ops import (
     clone_repo,
     commit_and_push,
+    create_branch,
     fetch_issue,
     make_branch_name,
     make_temp_dir,
@@ -70,7 +70,6 @@ async def _agent_stream(issue_url: str) -> AsyncIterator[str]:
             clone_repo(repo, repo_path)
 
             branch_name = make_branch_name(issue_number, issue["title"])
-            from github_ops import create_branch
             create_branch(repo_path, branch_name)
             await emit({"type": "step", "message": f"Working on branch: {branch_name}"})
 

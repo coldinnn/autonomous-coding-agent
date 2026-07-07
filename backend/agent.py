@@ -1,6 +1,5 @@
 import asyncio
-import json
-from typing import AsyncIterator, Callable
+from typing import Callable
 
 import anthropic
 from dotenv import load_dotenv
@@ -93,7 +92,7 @@ class CodingAgent:
 
                 await self.emit({"type": "tool_call", "tool": block.name, "input": block.input})
 
-                result = await asyncio.get_event_loop().run_in_executor(
+                result = await asyncio.get_running_loop().run_in_executor(
                     None, execute_tool, block.name, block.input, self.repo_path
                 )
 
@@ -119,7 +118,7 @@ class CodingAgent:
             await self.emit({"type": "step", "message": f"Reached iteration limit ({self.max_iterations}). Stopping."})
 
     async def _call_claude(self):
-        async with self.client.messages.stream(
+        async with self.client.beta.messages.stream(
             model="claude-fable-5",
             max_tokens=16000,
             system=SYSTEM_PROMPT,
