@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autonomous Coding Agent</title>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #141414;
+      --border: #2a2a2a;
+      --green: #00ff88;
+      --cyan: #00d4ff;
+      --yellow: #ffd700;
+      --red: #ff4d4d;
+      --purple: #b57bff;
+      --dim: #666;
+      --text: #e0e0e0;
+      --font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      color: var(--green);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span { color: var(--cyan); }
+
+    .tagline { color: var(--dim); font-size: 11px; }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 1px;
+      background: var(--border);
+      max-height: calc(100vh - 57px);
+    }
+
+    .panel {
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--dim);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-header .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--dim);
+    }
+
+    .panel-header .dot.active { background: var(--green); animation: pulse 1.5s infinite; }
+    .panel-header .dot.done { background: var(--cyan); animation: none; }
+    .panel-header .dot.error { background: var(--red); animation: none; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Input panel spans full width */
+    .input-panel {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      align-items: center;
+      padding: 12px 16px;
+      gap: 10px;
+    }
+
+    .input-panel label { color: var(--green); white-space: nowrap; font-size: 13px; }
+
+    .url-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+      border-radius: 3px;
+      transition: border-color 0.15s;
+    }
+
+    .url-input:focus { border-color: var(--green); }
+    .url-input::placeholder { color: var(--dim); }
+
+    .run-btn {
+      background: var(--green);
+      color: #000;
+      border: none;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 20px;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .run-btn:not(:disabled):hover { opacity: 0.85; }
+
+    /* Log panels */
+    .log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      font-size: 12px;
+      scroll-behavior: smooth;
+    }
+
+    .log::-webkit-scrollbar { width: 4px; }
+    .log::-webkit-scrollbar-track { background: transparent; }
+    .log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .entry { margin-bottom: 6px; display: flex; gap: 8px; align-items: flex-start; }
+
+    .ts { color: var(--dim); flex-shrink: 0; font-size: 11px; padding-top: 1px; }
+
+    .badge {
+      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-step    { background: #1a3a1a; color: var(--green); }
+    .badge-tool    { background: #1a2a3a; color: var(--cyan); }
+    .badge-result  { background: #1a1a2a; color: #8080ff; }
+    .badge-think   { background: #2a1a3a; color: var(--purple); }
+    .badge-write   { background: #3a2a00; color: var(--yellow); }
+    .badge-issue   { background: #2a1a00; color: #ff9500; }
+    .badge-pr      { background: #003a1a; color: var(--green); }
+    .badge-done    { background: #003a1a; color: var(--green); }
+    .badge-error   { background: #3a0000; color: var(--red); }
+
+    .msg { flex: 1; word-break: break-word; }
+    .msg.dim { color: var(--dim); }
+    .msg a { color: var(--cyan); text-decoration: none; }
+    .msg a:hover { text-decoration: underline; }
+
+    /* Thinking panel is collapsible */
+    .think-block {
+      background: #0e0a1a;
+      border: 1px solid #2a1a4a;
+      border-radius: 3px;
+      padding: 8px 12px;
+      margin-top: 4px;
+      color: #9a7abf;
+      font-size: 11px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    .think-toggle {
+      background: none;
+      border: none;
+      color: var(--purple);
+      font-family: var(--font);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline dotted;
+    }
+
+    /* File list panel */
+    .file-entry {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      border-bottom: 1px solid #1a1a1a;
+      font-size: 12px;
+    }
+
+    .file-entry:last-child { border-bottom: none; }
+    .file-icon { color: var(--yellow); }
+    .file-path { color: var(--text); word-break: break-all; }
+
+    /* Status bar */
+    #status-bar {
+      grid-column: 1 / -1;
+      padding: 5px 16px;
+      border-top: 1px solid var(--border);
+      background: #0a0a0a;
+      color: var(--dim);
+      font-size: 11px;
+      display: flex;
+      gap: 20px;
+    }
+
+    #status-bar span { display: flex; align-items: center; gap: 5px; }
+
+    .spinner {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border: 2px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">agent<span>/fix</span></div>
+  <div class="tagline">Autonomous coding agent powered by Claude Fable 5</div>
+</header>
+
+<main>
+
+  <!-- Input row -->
+  <div class="panel input-panel">
+    <label>$ issue →</label>
+    <input
+      id="url-input"
+      class="url-input"
+      type="text"
+      placeholder="https://github.com/owner/repo/issues/42"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <button id="run-btn" class="run-btn">Run Agent</button>
+  </div>
+
+  <!-- Left: Activity log -->
+  <div class="panel">
+    <div class="panel-header">
+      <div id="activity-dot" class="dot"></div>
+      Activity Log
+    </div>
+    <div id="activity-log" class="log">
+      <div class="entry">
+        <span class="ts">--:--:--</span>
+        <span class="msg dim">Paste a GitHub issue URL and click Run Agent.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Tool calls -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="dot"></div>
+      Tool Calls &amp; Thinking
+    </div>
+    <div id="tool-log" class="log"></div>
+  </div>
+
+</main>
+
+<div id="status-bar">
+  <span id="status-spinner" class="hidden"><span class="spinner"></span> Running...</span>
+  <span id="status-iters">Iterations: <b id="iter-count">0</b></span>
+  <span id="status-files">Files modified: <b id="file-count">0</b></span>
+  <span id="status-pr" class="hidden">PR: <a id="pr-link" href="#" target="_blank"></a></span>
+</div>
+
+<script>
+  const urlInput = document.getElementById('url-input');
+  const runBtn = document.getElementById('run-btn');
+  const activityLog = document.getElementById('activity-log');
+  const toolLog = document.getElementById('tool-log');
+  const activityDot = document.getElementById('activity-dot');
+  const statusSpinner = document.getElementById('status-spinner');
+  const iterCount = document.getElementById('iter-count');
+  const fileCount = document.getElementById('file-count');
+  const statusPr = document.getElementById('status-pr');
+  const prLink = document.getElementById('pr-link');
+
+  let iterations = 0;
+  let filesModified = new Set();
+  let eventSource = null;
+
+  function ts() {
+    return new Date().toTimeString().slice(0, 8);
+  }
+
+  function addEntry(log, badgeClass, badgeText, msgHtml) {
+    const el = document.createElement('div');
+    el.className = 'entry';
+    el.innerHTML = `
+      <span class="ts">${ts()}</span>
+      <span class="badge ${badgeClass}">${badgeText}</span>
+      <span class="msg">${msgHtml}</span>
+    `;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    return el;
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function handleEvent(data) {
+    const e = JSON.parse(data);
+
+    switch (e.type) {
+      case 'step':
+        addEntry(activityLog, 'badge-step', 'step', escHtml(e.message));
+        break;
+
+      case 'issue':
+        addEntry(activityLog, 'badge-issue', 'issue',
+          `<strong>${escHtml(e.title)}</strong>`);
+        break;
+
+      case 'tool_call': {
+        iterations++;
+        iterCount.textContent = iterations;
+        const inputStr = JSON.stringify(e.input, null, 2);
+        const entry = addEntry(toolLog, 'badge-tool', e.tool,
+          `<code>${escHtml(JSON.stringify(e.input)).slice(0, 120)}${JSON.stringify(e.input).length > 120 ? '…' : ''}</code>`);
+        break;
+      }
+
+      case 'tool_result':
+        addEntry(toolLog, 'badge-result', 'result',
+          `<code>${escHtml(e.content)}</code>`);
+        break;
+
+      case 'thinking': {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'entry';
+        const id = `think-${Date.now()}`;
+        wrapper.innerHTML = `
+          <span class="ts">${ts()}</span>
+          <span class="badge badge-think">think</span>
+          <span class="msg">
+            <button class="think-toggle" onclick="
+              const b = document.getElementById('${id}');
+              b.classList.toggle('hidden');
+              this.textContent = b.classList.contains('hidden') ? '▶ show thinking' : '▼ hide thinking';
+            ">▼ hide thinking</button>
+            <div id="${id}" class="think-block">${escHtml(e.text)}</div>
+          </span>
+        `;
+        toolLog.appendChild(wrapper);
+        toolLog.scrollTop = toolLog.scrollHeight;
+        break;
+      }
+
+      case 'file_written':
+        filesModified.add(e.path);
+        fileCount.textContent = filesModified.size;
+        addEntry(activityLog, 'badge-write', 'write', `<code>${escHtml(e.path)}</code>`);
+        break;
+
+      case 'pr_opened':
+        statusPr.classList.remove('hidden');
+        prLink.href = e.url;
+        prLink.textContent = e.url;
+        addEntry(activityLog, 'badge-pr', 'pr', `<a href="${escHtml(e.url)}" target="_blank">${escHtml(e.url)}</a>`);
+        break;
+
+      case 'done':
+        addEntry(activityLog, 'badge-done', 'done', escHtml(e.message));
+        setIdle('done');
+        break;
+
+      case 'error':
+        addEntry(activityLog, 'badge-error', 'error', escHtml(e.message));
+        setIdle('error');
+        break;
+    }
+  }
+
+  function setRunning() {
+    runBtn.disabled = true;
+    urlInput.disabled = true;
+    statusSpinner.classList.remove('hidden');
+    activityDot.className = 'dot active';
+    iterations = 0;
+    filesModified.clear();
+    iterCount.textContent = '0';
+    fileCount.textContent = '0';
+    statusPr.classList.add('hidden');
+    activityLog.innerHTML = '';
+    toolLog.innerHTML = '';
+  }
+
+  function setIdle(state) {
+    runBtn.disabled = false;
+    urlInput.disabled = false;
+    statusSpinner.classList.add('hidden');
+    activityDot.className = `dot ${state === 'error' ? 'error' : 'done'}`;
+    if (eventSource) { eventSource.close(); eventSource = null; }
+  }
+
+  runBtn.addEventListener('click', () => {
+    const url = urlInput.value.trim();
+    if (!url) { urlInput.focus(); return; }
+
+    setRunning();
+    const apiUrl = `/run?issue_url=${encodeURIComponent(url)}`;
+    eventSource = new EventSource(apiUrl);
+
+    eventSource.onmessage = (ev) => handleEvent(ev.data);
+    eventSource.onerror = () => {
+      addEntry(activityLog, 'badge-error', 'error', 'Connection lost.');
+      setIdle('error');
+    };
+  });
+
+  urlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !runBtn.disabled) runBtn.click();
+  });
+</script>
+
+</body>
+</html>
